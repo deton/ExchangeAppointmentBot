@@ -3,6 +3,7 @@ import java.net.*;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.logging.*;
+import java.util.regex.*;
 import microsoft.exchange.webservices.data.*;
 import org.pircbotx.*;
 import org.pircbotx.hooks.*;
@@ -12,19 +13,24 @@ import org.pircbotx.hooks.types.*;
 public class IrcBotForExchangeAppointment extends ListenerAdapter {
     static Logger logger = Logger.getLogger("IrcBotForExchangeAppointment");
     ExchangeClient exchange = new ExchangeClient();
+    ResponseMessageFormatter respformatter;
 
     final static String server = LocalProperties.server;
     final static String userId = LocalProperties.userId;
     final static String password = LocalProperties.password;
     final static String ircServer = LocalProperties.ircServer;
     final static String ircChannel = LocalProperties.ircChannel;
+    final static String myNick = LocalProperties.myNick;
 
     Properties botnick2usernick;
     Properties nick2email;
+    Properties locationProp;
 
     public IrcBotForExchangeAppointment() {
         botnick2usernick = loadConfigurationFile("botnick2usernick.properties");
         nick2email = loadConfigurationFile("nick2email.properties");
+        locationProp = loadConfigurationFile("location.properties");
+        respformatter = new ResponseMessageFormatter(locationProp);
     }
 
     @Override
@@ -61,7 +67,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = new Configuration.Builder()
-            .setName("ExchAppt") // nick of the bot
+            .setName(myNick) // nick of the bot
             .setServerHostname(ircServer)
             .addAutoJoinChannel(ircChannel)
             .setEncoding(Charset.forName("ISO-2022-JP"))
@@ -90,15 +96,20 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
      */
     String handleYoteiMessage(String fromNick, String message) throws ServiceLocalException, UnknownUserNickException {
         String nick = null;
+        String date = null;
         String[] params = message.split("[\\s]+");
         // assert params[0].equals("yotei")
         if (params.length == 1) { // only "yotei"
             nick = fromNick;
         } else {
             nick = params[1];
+            // 日付等を指定するパラメータ。"asu"等
+            // TODO: nick無しでasu等が指定された場合
+            if (params.length >= 3) {
+                date = params[2];
+            }
         }
-        //TODO: 日付等を指定するパラメータへの対応。"asu"等
-        return getAppointment(getEmailAddressFromNick(nick));
+        return getAppointment(getEmailAddressFromNick(nick), date);
     }
 
     /**
@@ -122,46 +133,102 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     String getAppointment(String email) throws ServiceLocalException {
-        if (email == null) {
-            return "Unknown nick. Please register nick in configuration file.";
+        /* XXX: 24時間未満だと、Exception
+        // 今から22時までの予定を取得
+        Date startDate = new Date();
+        Calendar cal = Calendar.getInstance();
+        if (cal.get(Calendar.HOUR_OF_DAY) < 21) {
+            cal.set(Calendar.HOUR_OF_DAY, 21);
+        } else {
+            cal.set(Calendar.HOUR_OF_DAY, 23);
         }
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        Date endDate = cal.getTime();
+        logger.log(Level.INFO, "start, end=" + startDate + "," + endDate);
+        */
         // 明日の予定まで取得。出張中の場合、明日は出社するかどうか聞かれた時用
         // TODO: 次の営業日まで
+        // XXX: getCalendarEventsの場合、1日ぶんだと当日分のみ全て取得
         long now = System.currentTimeMillis();
-        final long oneDayMs = 24 * 60 * 60 * 1000;
+        final long oneDayMs = 2 * 24 * 60 * 60 * 1000;
         Date startDate = new Date(now);
         Date endDate = new Date(now + oneDayMs);
         Collection<CalendarEvent> calendarEvents;
         try {
             calendarEvents = exchange.getCalendarEvents(server, userId, password, email, startDate, endDate);
         } catch (Exception ex) {
-            if (logger.isLoggable(Level.WARNING)) {
-                logger.log(Level.WARNING, "getCalendarEvents", ex);
-            }
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
+        return respformatter.format(calendarEvents);
+    }
 
-        StringBuilder sb = new StringBuilder();
-        java.util.Formatter fmt = new java.util.Formatter(sb);
-        for (CalendarEvent a : calendarEvents) {
-            Date start = a.getStartTime();
-            Date end = a.getEndTime();
-            String subj = null;
-            String loc = null;
-            CalendarEventDetails details = a.getDetails();
-            if (details != null) {
-                subj = details.getSubject();
-                loc = details.getLocation();
-            }
-            if (subj == null) {
-                subj = "-";
-            }
-            if (loc == null) {
-                loc = "-";
-            }
-            fmt.format("%1$tH:%1$tM-%2$tH:%2$tM %3$s(%4$s); ", start, end, subj, loc);
+    String getAppointment(String email, String date) throws ServiceLocalException {
+        if (date == null) {
+            return getAppointment(email);
         }
-        return sb.toString();
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        if (date.equals("asu")) {
+            cal.add(Calendar.DATE, 1);
+        } else {
+            /*
+            try {
+                Scanner s = new Scanner(date).useDelimiter("[-/]*");
+                int year = s.nextInt();
+                int month = s.nextInt() + 1;
+                int day;
+                if (s.hasNextInt()) {
+                    day = s.nextInt();
+                } else {
+                    day = month;
+                    month = year;
+                    if (month < cal.get(Calendar.MONTH)) {
+                    }
+                }
+            } catch (Exception ex) {
+                return "Date parse error (" + date + "): " + ex.getMessage();
+            } finally {
+                s.close();
+            }
+            */
+            Scanner s = null;
+            try {
+                s = new Scanner(date);
+                s.findInLine("(?:(\\d{4}))?\\D*(\\d{1,2})\\D*(\\d{1,2})");
+                MatchResult result = s.match();
+                String y = result.group(1);
+                if (y != null) {
+                    cal.set(Calendar.YEAR, Integer.parseInt(y));
+                }
+                int month = Integer.parseInt(result.group(2));
+                if (y == null && month < cal.get(Calendar.MONTH) + 1) {
+                    cal.add(Calendar.YEAR, 1);
+                }
+                int day = Integer.parseInt(result.group(3));
+                logger.log(Level.INFO, "YMD:" + cal.get(Calendar.YEAR) + "-" + month + "-" + day);
+                cal.set(Calendar.MONTH, month - 1);
+                cal.set(Calendar.DATE, day);
+            } catch (IllegalStateException ex) {
+                return "Date parse error (" + date + "): " + ex.getMessage();
+            } finally {
+                if (s != null) {
+                    s.close();
+                }
+            }
+        }
+        Date startDate = cal.getTime();
+        cal.add(Calendar.DATE, 1);
+        Date endDate = cal.getTime();
+        Collection<CalendarEvent> calendarEvents;
+        try {
+            calendarEvents = exchange.getCalendarEvents(server, userId, password, email, startDate, endDate);
+        } catch (Exception ex) {
+            return "Failed to get appointments from Exchange: " + ex.getMessage();
+        }
+        return respformatter.format(calendarEvents);
     }
 
     public static Properties loadConfigurationFile(String filename) {
