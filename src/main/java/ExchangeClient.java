@@ -2,9 +2,12 @@
 // http://ameblo.jp/softwaredeveloper/entry-11603208423.html
 import java.net.*;
 import java.util.*;
+import java.util.logging.*;
 import microsoft.exchange.webservices.data.*;
 
 public class ExchangeClient {
+    static Logger logger = Logger.getLogger("ExchangeClient");
+
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
             System.out.println("Usage: ExchangeClient <server> <email> <password> <roomemail>");
@@ -90,30 +93,23 @@ public class ExchangeClient {
     }
 
     public Collection<CalendarEvent> getCalendarEvents(String server, String userId, String password, String email, Date startDate, Date endDate) throws Exception {
-        ExchangeService service = createExchangeService(server, userId, password);
-        List<AttendeeInfo> attendees = new ArrayList<AttendeeInfo>();
-        attendees.add(new AttendeeInfo(email));
+        try {
+            ExchangeService service = createExchangeService(server, userId, password);
+            List<AttendeeInfo> attendees = new ArrayList<AttendeeInfo>();
+            attendees.add(new AttendeeInfo(email));
 
-        GetUserAvailabilityResults results = service.getUserAvailability(
-            attendees, new TimeWindow(startDate, endDate),
-            AvailabilityData.FreeBusy);
+            GetUserAvailabilityResults results = service.getUserAvailability(
+                attendees, new TimeWindow(startDate, endDate),
+                AvailabilityData.FreeBusy);
 
-        for (AttendeeAvailability attendeeAvailability : results.getAttendeesAvailability()) {
-            //System.out.println("Availability for " + attendees.get(attendeeIndex));
-            if (attendeeAvailability.getErrorCode() == ServiceError.NoError) {
-                return attendeeAvailability.getCalendarEvents();
-                /*
-                for (CalendarEvent calendarEvent : attendeeAvailability.getCalendarEvents()) {
-                    System.out.println("Calendar event");
-                    System.out.println("  Start time: " + calendarEvent.getStartTime().toString());
-                    System.out.println("  End time: " + calendarEvent.getEndTime().toString());
-
-                    if (calendarEvent.getDetails() != null) {
-                        System.out.println("  Subject: " + calendarEvent.getDetails().getSubject());
-                        // Output additional properties.
-                    }
+            for (AttendeeAvailability attendeeAvailability : results.getAttendeesAvailability()) {
+                if (attendeeAvailability.getErrorCode() == ServiceError.NoError) {
+                    return attendeeAvailability.getCalendarEvents();
                 }
-                */
+            }
+        } catch (Exception ex) {
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.log(Level.WARNING, "getCalendarEvents", ex);
             }
         }
         return null;
