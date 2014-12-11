@@ -133,23 +133,10 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     String getAppointment(String email) throws ServiceLocalException {
-        /* XXX: 24時間未満だと、Exception
-        // 今から22時までの予定を取得
-        Date startDate = new Date();
-        Calendar cal = Calendar.getInstance();
-        if (cal.get(Calendar.HOUR_OF_DAY) < 21) {
-            cal.set(Calendar.HOUR_OF_DAY, 21);
-        } else {
-            cal.set(Calendar.HOUR_OF_DAY, 23);
-        }
-        cal.set(Calendar.MINUTE, 59);
-        cal.set(Calendar.SECOND, 59);
-        Date endDate = cal.getTime();
-        logger.log(Level.INFO, "start, end=" + startDate + "," + endDate);
-        */
         // 明日の予定まで取得。出張中の場合、明日は出社するかどうか聞かれた時用
         // TODO: 次の営業日まで
         // XXX: getCalendarEventsの場合、1日ぶんだと当日分のみ全て取得
+        // XXX: 24時間未満だとException
         long now = System.currentTimeMillis();
         final long oneDayMs = 2 * 24 * 60 * 60 * 1000;
         Date startDate = new Date(now);
@@ -160,7 +147,9 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
-        return respformatter.format(calendarEvents);
+        // 終了予定後、2時間経過している予定は無視。
+        // 終わらず続いている場合は知りたい。
+        return respformatter.format(calendarEvents, now - 2 * 60 * 60 * 1000);
     }
 
     String getAppointment(String email, String date) throws ServiceLocalException {
@@ -174,26 +163,6 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         if (date.equals("asu")) {
             cal.add(Calendar.DATE, 1);
         } else {
-            /*
-            try {
-                Scanner s = new Scanner(date).useDelimiter("[-/]*");
-                int year = s.nextInt();
-                int month = s.nextInt() + 1;
-                int day;
-                if (s.hasNextInt()) {
-                    day = s.nextInt();
-                } else {
-                    day = month;
-                    month = year;
-                    if (month < cal.get(Calendar.MONTH)) {
-                    }
-                }
-            } catch (Exception ex) {
-                return "Date parse error (" + date + "): " + ex.getMessage();
-            } finally {
-                s.close();
-            }
-            */
             Scanner s = null;
             try {
                 s = new Scanner(date);
@@ -228,7 +197,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
-        return respformatter.format(calendarEvents);
+        return respformatter.format(calendarEvents, 0);
     }
 
     public static Properties loadConfigurationFile(String filename) {

@@ -7,7 +7,12 @@ public class ResponseMessageFormatter {
         this.prop = prop;
     }
 
-    public String format(Collection<CalendarEvent> calendarEvents) {
+    /**
+     * IRCメッセージ用に予定リストを整形する
+     * @param calendarEvents 予定リスト
+     * @param fromMillis 終了日時がこの日時より前の予定は除く
+     */
+    public String format(Collection<CalendarEvent> calendarEvents, long fromMillis) {
         if (calendarEvents == null) {
             return null;
         }
@@ -20,16 +25,13 @@ public class ResponseMessageFormatter {
         for (CalendarEvent a : calendarEvents) {
             Date start = a.getStartTime();
             Date end = a.getEndTime();
-            // 終了予定後、2時間経過している予定は無視。
-            // 終わらず続いている場合は知りたい。
-            // TODO: 日付が指定された場合は全て表示
-            if (end.getTime() + 2 * 60 * 60 * 1000 < now) {
+            if (end.getTime() < fromMillis) {
                 continue;
             }
             cal.setTime(start);
             int date = cal.get(Calendar.DATE);
             if (date != prevDate) {
-                headmark = "▲";
+                headmark = "●";
                 fmt.format("%s%td日", headmark, start);
                 prevDate = date;
             } else {
@@ -40,7 +42,7 @@ public class ResponseMessageFormatter {
             cal.setTime(end);
             date = cal.get(Calendar.DATE);
             if (date != prevDate) {
-                headmark = "▲";
+                headmark = "●";
                 fmt.format("%s%td日", headmark, end);
                 prevDate = date;
             }
