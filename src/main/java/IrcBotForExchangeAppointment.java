@@ -44,13 +44,17 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         try {
             if (isBotNick(nick)) {
                 respmsg = getAppointment(getEmailAddressFromNick(getUserNickFromBotNick(nick)));
+            } else if (msg.startsWith("yoteiconf")) {
+                respmsg = handleYoteiConfMessage(nick, removeNoiseChars(msg));
             } else if (msg.startsWith("yotei")) {
                 // TODO: "予定"や"よてい"等にも反応する
-                respmsg = handleYoteiMessage(nick, msg);
+                respmsg = handleYoteiMessage(nick, removeNoiseChars(msg));
                 // TODO: botnick→usernickやusernick→emailaddress変換テーブルを
                 // ボット用コマンド発言をもとに動的に登録。
                 // 例: "yotei botnick detonPHS deton"や、
                 // "yotei email deton@example.com deton"
+            } else {
+                return;
             }
         } catch (Exception ex) {
             if (logger.isLoggable(Level.INFO)) {
@@ -87,6 +91,27 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     /**
+     * ニックネーム→emailアドレス変換表を設定
+     * 例: "yoteiconf taro@example.com taro"
+     */
+    String handleYoteiConfMessage(String fromNick, String message) throws ServiceLocalException, UnknownUserNickException {
+        String nick = null;
+        String email = null;
+        String[] params = message.split("[\\s]+");
+        // assert params[0].equals("yoteiconf")
+        if (params.length == 1) { // only "yoteiconf"
+            return "Usage: yoteiconf taro@example.com taro";
+        }
+        email = params[1];
+        if (params.length == 2) {
+            nick = fromNick;
+        } else {
+            nick = params[2];
+        }
+        return setEmailAddressForNick(nick, email);
+    }
+
+    /**
      * 誰かの予定を問い合わせる発言に対する応答メッセージを作る。
      * 例: "yotei yamada asu"
      * @param fromNick 発言者のnick
@@ -113,6 +138,16 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     /**
+     * 呼び出し回避用にニックネーム中に入れられた余分な文字を削除する。
+     * 例: "yotei yam,ada" -> "yotei yamada"
+     * 例: "yoteiconf yam,ada=ya,mada@example.com"
+     *     -> "yoteiconf yamada=yamada@example.com"
+     */
+    String removeNoiseChars(String msg) {
+        return msg.replaceAll("[,:;/]", "");
+    }
+
+    /**
      * PhsRingNotifyデバイスbotのnickから、対応するユーザのnickを得る。
      * 例: "detonPHS"→"deton"
      */
@@ -132,6 +167,12 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         return email;
     }
 
+    String setEmailAddressForNick(String nick, String email) {
+        nick2email.setProperty(nick, email);
+        saveConfigurationFile("nick2email.properties", nick2email);
+        return "nick->email設定を登録: " + nick + "->" + email;
+    }
+
     String getAppointment(String email) throws ServiceLocalException {
         // 明日の予定まで取得。出張中の場合、明日は出社するかどうか聞かれた時用
         // TODO: 次の営業日まで
@@ -146,6 +187,9 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
             calendarEvents = exchange.getCalendarEvents(server, userId, password, email, startDate, endDate);
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
+        }
+        if (calendarEvents == null) {
+            return String.format("予定無し(%s)", email);
         }
         // 終了予定後、2時間経過している予定は無視。
         // 終わらず続いている場合は知りたい。
@@ -162,6 +206,9 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         cal.set(Calendar.SECOND, 0);
         if (date.equals("asu")) {
             cal.add(Calendar.DATE, 1);
+        } else if (date.startsWith("kyo")) {
+            // 日付指定無しだと明日の予定も表示するので、
+            // 今日の予定のみ表示したい場合向け
         } else {
             Scanner s = null;
             try {
@@ -197,27 +244,15 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
+        if (calendarEvents == null) {
+            return String.format("予定無し(%tF, %s)", startDate, email);
+        }
         return respformatter.format(calendarEvents, 0);
     }
 
-    public static Properties loadConfigurationFile(String filename) {
+    static Properties loadConfigurationFile(String filename) {
         Properties p = new Properties();
-        ClassLoader loader = IrcBotForExchangeAppointment.class.getClassLoader();
-        URL url = null;
-        if (loader != null) {
-            url = loader.getResource(filename);
-        }
-        if (url == null) {
-            url = ClassLoader.getSystemResource(filename);
-        }
-        if (url == null) {
-            if (logger.isLoggable(Level.INFO)) {
-                logger.info("properties file not found: " + filename);
-            }
-            return p;
-        }
-
-        try (InputStream in = url.openStream()) {
+        try (FileReader in = new FileReader(filename)) {
             p.load(in);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
@@ -225,5 +260,15 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
             }
         }
         return p;
+    }
+
+    static void saveConfigurationFile(String filename, Properties p) {
+        try (FileWriter out = new FileWriter(filename)) {
+            p.store(out, "ExchangeAppointmentIrcBot: " + filename);
+        } catch (IOException e) {
+            if (logger.isLoggable(Level.INFO)) {
+                logger.info("NG storing properties file: " + filename);
+             }
+         }
     }
 }
