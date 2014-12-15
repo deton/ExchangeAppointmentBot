@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.regex.*;
 import microsoft.exchange.webservices.data.*;
 
 public class ResponseMessageFormatter {
@@ -13,9 +14,6 @@ public class ResponseMessageFormatter {
      * @param fromMillis 終了日時がこの日時より前の予定は除く
      */
     public String format(Collection<CalendarEvent> calendarEvents, long fromMillis) {
-        if (calendarEvents == null) {
-            return null;
-        }
         long now = System.currentTimeMillis();
         StringBuilder sb = new StringBuilder();
         Formatter fmt = new Formatter(sb);
@@ -67,8 +65,27 @@ public class ResponseMessageFormatter {
         return sb.toString();
     }
 
+    /**
+     * 会議室名を短くする。
+     * 例: "本社)川崎共通 本1 1階 A101会議室 10人"→"A101"
+     */
     String shortenLocation(String location) {
-        // TODO
+        StringBuffer sb = new StringBuffer();
+        boolean matched = false;
+        // XXX: propertiesファイルの場合、keyにスペースを含められない
+        for (String key : prop.stringPropertyNames()) {
+            Pattern pat = Pattern.compile(key); // TODO: compileしたものを保持
+            Matcher m = pat.matcher(location);
+            if (m.find()) {
+                m.appendReplacement(sb, prop.getProperty(key));
+                m.appendTail(sb);
+                matched = true;
+                break;
+            }
+        }
+        if (matched) {
+            return sb.toString();
+        }
         return location;
     }
 }

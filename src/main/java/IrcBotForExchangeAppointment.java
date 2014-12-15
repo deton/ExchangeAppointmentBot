@@ -11,6 +11,7 @@ import org.pircbotx.hooks.events.*;
 import org.pircbotx.hooks.types.*;
 
 public class IrcBotForExchangeAppointment extends ListenerAdapter {
+    static final String NICK2EMAIL_FILE = "nick2email.properties";
     static Logger logger = Logger.getLogger("IrcBotForExchangeAppointment");
     ExchangeClient exchange = new ExchangeClient();
     ResponseMessageFormatter respformatter;
@@ -28,7 +29,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
 
     public IrcBotForExchangeAppointment() {
         botnick2usernick = loadConfigurationFile("botnick2usernick.properties");
-        nick2email = loadConfigurationFile("nick2email.properties");
+        nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
         locationProp = loadConfigurationFile("location.properties");
         respformatter = new ResponseMessageFormatter(locationProp);
     }
@@ -62,11 +63,10 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
             }
             respmsg = ex.getMessage();
         }
-        if (respmsg == null || respmsg.length() == 0) {
-            respmsg = "予定無し";
+        if (respmsg != null && respmsg.length() > 0) {
+            //event.respond(respmsg); // PRIVMSG
+            event.getChannel().send().notice(respmsg);
         }
-        //event.respond(respmsg); // PRIVMSG
-        event.getChannel().send().notice(respmsg);
     }
 
     public static void main(String[] args) throws Exception {
@@ -92,22 +92,30 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
 
     /**
      * ニックネーム→emailアドレス変換表を設定
-     * 例: "yoteiconf taro@example.com taro"
+     * 例: 設定: "yoteiconf taro=taro@example.com"
+     *     取得: "yoteiconf taro"
+     *     削除: "yoteiconf taro="
      */
     String handleYoteiConfMessage(String fromNick, String message) throws ServiceLocalException, UnknownUserNickException {
-        String nick = null;
-        String email = null;
         String[] params = message.split("[\\s]+");
         // assert params[0].equals("yoteiconf")
         if (params.length == 1) { // only "yoteiconf"
-            return "Usage: yoteiconf taro@example.com taro";
+            return "Usage: yoteiconf taro=taro@example.com";
         }
-        email = params[1];
-        if (params.length == 2) {
-            nick = fromNick;
-        } else {
-            nick = params[2];
+        int i = params[1].indexOf('=');
+        if (i < 0) { // 取得
+            return params[1] + "=" + getEmailAddressFromNick(params[1]);
         }
+        String nick = params[1].substring(0, i);
+        String email = params[1].substring(i + 1);
+        if (isDateParam(nick) || nick.equals("help")) {
+            return "文字列(" + nick + ")は予約語のため、設定や削除不可";
+        }
+        if (email.length() == 0) { // 削除
+            return deleteEmailAddressForNick(nick);
+        }
+        // TODO: channelごとにnick->email表を管理。nick文字列がぶつかってもOKに
+        // XXX: 上書きする場合は、yoteiconf!のように指定してもらう
         return setEmailAddressForNick(nick, email);
     }
 
@@ -128,13 +136,21 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
             nick = fromNick;
         } else {
             nick = params[1];
-            // 日付等を指定するパラメータ。"asu"等
-            // TODO: nick無しでasu等が指定された場合
-            if (params.length >= 3) {
+            if (isDateParam(nick)) { // nick無しでasu等が指定された場合
+                date = nick;
+                nick = fromNick;
+            } else if (nick.equals("help")) {
+                return "Usage: yotei [nick] [asu|kyo|20141215|1215]";
+            } else if (params.length >= 3) {
+                // 日付等を指定するパラメータ。"asu"等
                 date = params[2];
             }
         }
         return getAppointment(getEmailAddressFromNick(nick), date);
+    }
+
+    boolean isDateParam(String param) {
+        return (param.equals("asu") || param.equals("kyo") || param.matches("^[0-9]"));
     }
 
     /**
@@ -162,15 +178,21 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     String getEmailAddressFromNick(String nick) throws UnknownUserNickException {
         String email = nick2email.getProperty(nick);
         if (email == null) {
-            throw new UnknownUserNickException("Unknown user nick: " + nick + ". Please add the nick to nick2email.properties file.");
+            throw new UnknownUserNickException("Unknown user nick: " + nick + ". Please add the nick: yoteiconf " + nick + "=user@example.com");
         }
         return email;
     }
 
     String setEmailAddressForNick(String nick, String email) {
         nick2email.setProperty(nick, email);
-        saveConfigurationFile("nick2email.properties", nick2email);
+        saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
         return "nick->email設定を登録: " + nick + "->" + email;
+    }
+
+    String deleteEmailAddressForNick(String nick) {
+        nick2email.remove(nick);
+        saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
+        return "nick->email設定を削除: " + nick;
     }
 
     String getAppointment(String email) throws ServiceLocalException {
@@ -193,7 +215,11 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
         }
         // 終了予定後、2時間経過している予定は無視。
         // 終わらず続いている場合は知りたい。
-        return respformatter.format(calendarEvents, now - 2 * 60 * 60 * 1000);
+        String respmsg = respformatter.format(calendarEvents, now - 2 * 60 * 60 * 1000);
+        if (respmsg.length() == 0) { // calendarEvents内予定が全て無視された
+            return String.format("予定無し(%s)", email);
+        }
+        return respmsg;
     }
 
     String getAppointment(String email, String date) throws ServiceLocalException {
