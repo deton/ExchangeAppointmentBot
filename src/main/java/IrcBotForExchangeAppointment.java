@@ -11,7 +11,7 @@ import org.pircbotx.hooks.events.*;
 import org.pircbotx.hooks.types.*;
 
 public class IrcBotForExchangeAppointment extends ListenerAdapter {
-    static final String NICK2EMAIL_FILE = "nick2email.properties";
+    static final String NICK2EMAIL_FILE = "nick2email.xml";
     static Logger logger = Logger.getLogger("IrcBotForExchangeAppointment");
     ExchangeClient exchange = new ExchangeClient();
     ResponseMessageFormatter respformatter;
@@ -28,9 +28,9 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     Properties locationProp;
 
     public IrcBotForExchangeAppointment() {
-        botnick2usernick = loadConfigurationFile("botnick2usernick.properties");
+        botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
         nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
-        locationProp = loadConfigurationFile("location.properties");
+        locationProp = loadConfigurationFile("location.xml");
         respformatter = new ResponseMessageFormatter(locationProp);
     }
 
@@ -83,6 +83,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     boolean isBotNick(String nick) {
+        // XXX: botのnickは大文字小文字も正しく設定ファイルに書く必要あり
         String usernick = botnick2usernick.getProperty(nick);
         if (usernick == null) {
             return false;
@@ -150,7 +151,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     boolean isDateParam(String param) {
-        return (param.equals("asu") || param.equals("kyo") || param.matches("^[0-9]"));
+        return (param.equals("asu") || param.equals("kyo") || param.matches("^[0-9].*"));
     }
 
     /**
@@ -278,8 +279,8 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
 
     static Properties loadConfigurationFile(String filename) {
         Properties p = new Properties();
-        try (FileReader in = new FileReader(filename)) {
-            p.load(in);
+        try (FileInputStream in = new FileInputStream(filename)) {
+            p.loadFromXML(in);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG loading properties file: " + filename);
@@ -289,8 +290,8 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     }
 
     static void saveConfigurationFile(String filename, Properties p) {
-        try (FileWriter out = new FileWriter(filename)) {
-            p.store(out, "ExchangeAppointmentIrcBot: " + filename);
+        try (FileOutputStream out = new FileOutputStream(filename)) {
+            p.storeToXML(out, "ExchangeAppointmentIrcBot: " + filename);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG storing properties file: " + filename);
