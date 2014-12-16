@@ -3,7 +3,7 @@ apply plugin: 'application'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
-mainClassName = 'IrcBotForExchangeAppointment'
+mainClassName = 'ExchangeAppointmentBot'
 //mainClassName = 'ExchangeClient'
 
 run {

@@ -10,9 +10,9 @@ import org.pircbotx.hooks.*;
 import org.pircbotx.hooks.events.*;
 import org.pircbotx.hooks.types.*;
 
-public class IrcBotForExchangeAppointment extends ListenerAdapter {
+public class ExchangeAppointmentBot extends ListenerAdapter {
     static final String NICK2EMAIL_FILE = "nick2email.xml";
-    static Logger logger = Logger.getLogger("IrcBotForExchangeAppointment");
+    static Logger logger = Logger.getLogger("ExchangeAppointmentBot");
     ExchangeClient exchange = new ExchangeClient();
     ResponseMessageFormatter respformatter;
 
@@ -27,7 +27,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
     Properties nick2email;
     Properties locationProp;
 
-    public IrcBotForExchangeAppointment() {
+    public ExchangeAppointmentBot() {
         botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
         nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
         locationProp = loadConfigurationFile("location.xml");
@@ -75,7 +75,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
             .setServerHostname(ircServer)
             .addAutoJoinChannel(ircChannel)
             .setEncoding(Charset.forName("ISO-2022-JP"))
-            .addListener(new IrcBotForExchangeAppointment())
+            .addListener(new ExchangeAppointmentBot())
             .buildConfiguration();
 
         PircBotX bot = new PircBotX(configuration);
@@ -291,7 +291,7 @@ public class IrcBotForExchangeAppointment extends ListenerAdapter {
 
     static void saveConfigurationFile(String filename, Properties p) {
         try (FileOutputStream out = new FileOutputStream(filename)) {
-            p.storeToXML(out, "ExchangeAppointmentIrcBot: " + filename);
+            p.storeToXML(out, "ExchangeAppointmentBot: " + filename);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG storing properties file: " + filename);
