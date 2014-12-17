@@ -18,7 +18,8 @@ public class ResponseMessageFormatter {
         StringBuilder sb = new StringBuilder();
         Formatter fmt = new Formatter(sb);
         Calendar cal = Calendar.getInstance();
-        int prevDate = cal.get(Calendar.DATE);
+        int today = cal.get(Calendar.DATE);
+        int prevDate = today;
         String headmark = "▼";
         for (CalendarEvent a : calendarEvents) {
             Date start = a.getStartTime();
@@ -29,7 +30,12 @@ public class ResponseMessageFormatter {
             cal.setTime(start);
             int date = cal.get(Calendar.DATE);
             if (date != prevDate) {
-                headmark = "●";
+                if (date == today) {
+                    // 日全体の予定があって翌日終了のため●になったのを戻す
+                    headmark = "▼";
+                } else {
+                    headmark = "●";
+                }
                 fmt.format("%s%td日", headmark, start);
                 prevDate = date;
             } else {
@@ -40,8 +46,12 @@ public class ResponseMessageFormatter {
             cal.setTime(end);
             date = cal.get(Calendar.DATE);
             if (date != prevDate) {
-                headmark = "●";
-                fmt.format("%s%td日", headmark, end);
+                fmt.format("%td日", end);
+                if (date == today) {
+                    headmark = "▼";
+                } else {
+                    headmark = "●";
+                }
                 prevDate = date;
             }
             fmt.format("%tR", end);
