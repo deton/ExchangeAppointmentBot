@@ -16,18 +16,30 @@ public class ExchangeAppointmentBot extends ListenerAdapter {
     ExchangeClient exchange = new ExchangeClient();
     ResponseMessageFormatter respformatter;
 
-    final static String server = LocalProperties.server;
-    final static String userId = LocalProperties.userId;
-    final static String password = LocalProperties.password;
-    final static String ircServer = LocalProperties.ircServer;
-    final static String ircChannel = LocalProperties.ircChannel;
-    final static String myNick = LocalProperties.myNick;
+    // connection info for Exchange Server
+    String server;
+    String userId;
+    String password;
 
+    File datadir;
     Properties botnick2usernick;
     Properties nick2email;
     Properties locationProp;
 
-    public ExchangeAppointmentBot() {
+    public ExchangeAppointmentBot(String path) throws ExchangeAppointmentBotException, IOException {
+        if (path != null) {
+            datadir = new File(path);
+        } else {
+            datadir = new File(System.getProperty("user.home"), ".yoteibot");
+        }
+        Properties p = loadConfigurationFile("connection.xml");
+        server = p.getProperty("server");
+        userId = p.getProperty("userId");
+        password = p.getProperty("password");
+        if (server == null || userId == null || password == null) {
+            throw new ExchangeAppointmentBotException("incomplete Exchange Server connection info: server=" + server + ",userId=" + userId);
+        }
+
         botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
         nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
         locationProp = loadConfigurationFile("location.xml");
@@ -70,12 +82,22 @@ public class ExchangeAppointmentBot extends ListenerAdapter {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length < 3) {
+            System.out.println("Usage: ExchangeAppointmentBot <ircserver> <nick> <channel> [datadir]");
+            System.out.println("   ex: ExchangeAppointmentBot irc.example.com [yotei] #projA /home/deton/.yoteibot/");
+            return;
+        }
+        String datadir = null;
+        if (args.length > 3) {
+            datadir = args[3];
+        }
+
         Configuration configuration = new Configuration.Builder()
-            .setName(myNick) // nick of the bot
-            .setServerHostname(ircServer)
-            .addAutoJoinChannel(ircChannel)
+            .setServerHostname(args[0])
+            .setName(args[1]) // nick of the bot
+            .addAutoJoinChannel(args[2])
             .setEncoding(Charset.forName("ISO-2022-JP"))
-            .addListener(new ExchangeAppointmentBot())
+            .addListener(new ExchangeAppointmentBot(datadir))
             .buildConfiguration();
 
         PircBotX bot = new PircBotX(configuration);
@@ -277,25 +299,26 @@ public class ExchangeAppointmentBot extends ListenerAdapter {
         return respformatter.format(calendarEvents, 0);
     }
 
-    static Properties loadConfigurationFile(String filename) {
+    Properties loadConfigurationFile(String filename) throws IOException {
         Properties p = new Properties();
-        try (FileInputStream in = new FileInputStream(filename)) {
+        try (FileInputStream in = new FileInputStream(new File(datadir, filename))) {
             p.loadFromXML(in);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG loading properties file: " + filename);
             }
+            throw e;
         }
         return p;
     }
 
-    static void saveConfigurationFile(String filename, Properties p) {
-        try (FileOutputStream out = new FileOutputStream(filename)) {
+    void saveConfigurationFile(String filename, Properties p) {
+        try (FileOutputStream out = new FileOutputStream(new File(datadir, filename))) {
             p.storeToXML(out, "ExchangeAppointmentBot: " + filename);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG storing properties file: " + filename);
              }
-         }
+        }
     }
 }

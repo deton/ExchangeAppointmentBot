@@ -7,7 +7,7 @@ mainClassName = 'ExchangeAppointmentBot'
 //mainClassName = 'ExchangeClient'
 
 run {
-    // Usage: gradle run -Pargs="exchange.example.com taro@example.com p@sSw0rD room-00309@example.com"
+    // Usage: gradle run -Pargs="irc.example.com [yotei] #projA /home/deton/.yoteibot/"
     // cf. http://qiita.com/opengl-8080/items/4c1aa85b4737bd362d9e
     // "args" というプロパティが渡されていたら
     if (project.hasProperty('args')) {

@@ -10,7 +10,7 @@ public class ExchangeClient {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
-            System.out.println("Usage: ExchangeClient <server> <email> <password> <roomemail>");
+            System.out.println("Usage: ExchangeClient <server> <email> <password> <targetemail>");
             System.out.println("   ex: ExchagneClient exchange.example.com taro@example.com p@sSw0rD room-00309@example.com");
             return;
         }
