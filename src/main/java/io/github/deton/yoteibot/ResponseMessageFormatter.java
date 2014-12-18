@@ -43,6 +43,22 @@ public class ResponseMessageFormatter {
             } else {
                 sb.append(headmark);
             }
+
+            boolean needResetColor = false;
+            switch (a.getFreeBusyStatus()) {
+            case Tentative: // 仮の予定
+                sb.append("?");
+                break;
+            case Free: // 空き時間
+                sb.append("\00315"); // light grey
+                needResetColor = true;
+                break;
+            case OOF: // 外出中
+                sb.append("\00306"); // purple
+                needResetColor = true;
+                break;
+            }
+
             fmt.format("%tR", start);
             sb.append("-");
             cal.setTime(end);
@@ -72,6 +88,9 @@ public class ResponseMessageFormatter {
             sb.append(subj);
             if (loc != null) {
                 fmt.format("(%s)", shortenLocation(loc));
+            }
+            if (needResetColor) {
+                sb.append("\003");
             }
         }
         return sb.toString();
