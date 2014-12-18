@@ -1,3 +1,5 @@
+package io.github.deton.yoteibot;
+
 import java.util.*;
 import java.util.regex.*;
 import microsoft.exchange.webservices.data.*;

@@ -1,3 +1,5 @@
+package io.github.deton.yoteibot;
+
 public class ExchangeAppointmentBotException extends Exception {
     public ExchangeAppointmentBotException() {
         super();

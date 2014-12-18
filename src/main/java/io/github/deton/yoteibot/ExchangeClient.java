@@ -1,5 +1,5 @@
-// http://stackoverflow.com/questions/15841767/how-to-authenticate-ews-java-api
-// http://ameblo.jp/softwaredeveloper/entry-11603208423.html
+package io.github.deton.yoteibot;
+
 import java.net.*;
 import java.util.*;
 import java.util.logging.*;

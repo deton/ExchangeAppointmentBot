@@ -2,8 +2,9 @@ apply plugin: 'java'
 apply plugin: 'application'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+[compileJava, compileTestJava]*.options*.compilerArgs << "-Xlint:unchecked"
 
-mainClassName = 'ExchangeAppointmentBot'
+mainClassName = 'io.github.deton.yoteibot.ExchangeAppointmentBot'
 //mainClassName = 'ExchangeClient'
 
 run {
