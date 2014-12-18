@@ -2,7 +2,15 @@ apply plugin: 'java'
 apply plugin: 'application'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
-[compileJava, compileTestJava]*.options*.compilerArgs << "-Xlint:unchecked"
+/*
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
+    }
+}
+*/
 
 mainClassName = 'io.github.deton.yoteibot.ExchangeAppointmentBot'
 //mainClassName = 'ExchangeClient'

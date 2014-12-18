@@ -12,7 +12,7 @@ import org.pircbotx.hooks.*;
 import org.pircbotx.hooks.events.*;
 import org.pircbotx.hooks.types.*;
 
-public class ExchangeAppointmentBot extends ListenerAdapter {
+public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     static final String NICK2EMAIL_FILE = "nick2email.xml";
     static Logger logger = Logger.getLogger("ExchangeAppointmentBot");
     ExchangeClient exchange = new ExchangeClient();
@@ -64,10 +64,6 @@ public class ExchangeAppointmentBot extends ListenerAdapter {
             } else if (msg.startsWith("yotei")) {
                 // TODO: "予定"や"よてい"等にも反応する
                 respmsg = handleYoteiMessage(nick, removeNoiseChars(msg));
-                // TODO: botnick→usernickやusernick→emailaddress変換テーブルを
-                // ボット用コマンド発言をもとに動的に登録。
-                // 例: "yotei botnick detonPHS deton"や、
-                // "yotei email deton@example.com deton"
             } else {
                 return;
             }
@@ -94,7 +90,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter {
             datadir = args[3];
         }
 
-        Configuration configuration = new Configuration.Builder()
+        Configuration<PircBotX> configuration = new Configuration.Builder<PircBotX>()
             .setServerHostname(args[0])
             .setName(args[1]) // nick of the bot
             .addAutoJoinChannel(args[2])
