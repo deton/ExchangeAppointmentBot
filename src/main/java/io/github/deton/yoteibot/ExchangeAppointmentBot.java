@@ -15,32 +15,23 @@ import org.pircbotx.hooks.types.*;
 public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     static final String NICK2EMAIL_FILE = "nick2email.xml";
     static Logger logger = Logger.getLogger("ExchangeAppointmentBot");
-    ExchangeClient exchange = new ExchangeClient();
+    ExchangeClient exchange;
     ResponseMessageFormatter respformatter;
-
-    // connection info for Exchange Server
-    String server;
-    String userId;
-    String password;
 
     File datadir;
     Properties botnick2usernick;
     Properties nick2email;
     Properties locationProp;
 
-    public ExchangeAppointmentBot(String path) throws ExchangeAppointmentBotException, IOException {
+    public ExchangeAppointmentBot(String path) throws IllegalArgumentException, IOException {
         if (path != null) {
             datadir = new File(path);
         } else {
             datadir = new File(System.getProperty("user.home"), ".yoteibot");
         }
-        Properties p = loadConfigurationFile("connection.xml");
-        server = p.getProperty("server");
-        userId = p.getProperty("userId");
-        password = p.getProperty("password");
-        if (server == null || userId == null || password == null) {
-            throw new ExchangeAppointmentBotException("incomplete Exchange Server connection info: server=" + server + ",userId=" + userId);
-        }
+        Properties p = loadConfigurationFile("exchange.xml");
+        exchange = new ExchangeClient(p.getProperty("server"),
+                p.getProperty("userId"), p.getProperty("password"));
 
         botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
         nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
@@ -227,7 +218,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         Date endDate = new Date(now + oneDayMs);
         Collection<CalendarEvent> calendarEvents;
         try {
-            calendarEvents = exchange.getCalendarEvents(server, userId, password, email, startDate, endDate);
+            calendarEvents = exchange.getCalendarEvents(email, startDate, endDate);
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
@@ -287,7 +278,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         Date endDate = cal.getTime();
         Collection<CalendarEvent> calendarEvents;
         try {
-            calendarEvents = exchange.getCalendarEvents(server, userId, password, email, startDate, endDate);
+            calendarEvents = exchange.getCalendarEvents(email, startDate, endDate);
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }

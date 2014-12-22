@@ -8,18 +8,32 @@ import microsoft.exchange.webservices.data.*;
 public class ExchangeClient {
     static Logger logger = Logger.getLogger("ExchangeClient");
 
+    // connection info for Exchange Server
+    String server;
+    String userId;
+    String password;
+
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
             System.out.println("Usage: ExchangeClient <server> <email> <password> <targetemail>");
-            System.out.println("   ex: ExchagneClient exchange.example.com taro@example.com p@sSw0rD room-00309@example.com");
+            System.out.println("   ex: ExchagneClient exchange.example.com taro@example.com p@sSw0rD target-00309@example.com");
             return;
         }
-        ExchangeClient ec = new ExchangeClient();
-        //ec.outputAppointments(args[0], args[1], args[2], args[3]);
-        ec.outputCalendarEvents(args[0], args[1], args[2], args[3]);
+        ExchangeClient ec = new ExchangeClient(args[0], args[1], args[2]);
+        //ec.outputAppointments(args[3]);
+        ec.outputCalendarEvents(args[3]);
     }
 
-    public void outputCalendarEvents(String server, String userId, String password, String email) throws Exception {
+    public ExchangeClient(String server, String userId, String password) throws IllegalArgumentException {
+        if (server == null || userId == null || password == null) {
+            throw new IllegalArgumentException("incomplete Exchange Server connection info: server=" + server + ",userId=" + userId);
+        }
+        this.server = server;
+        this.userId = userId;
+        this.password = password;
+    }
+
+    public void outputCalendarEvents(String email) throws Exception {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -27,7 +41,7 @@ public class ExchangeClient {
         Date startDate = cal.getTime();
         cal.add(Calendar.DATE, 1);
         Date endDate = cal.getTime();
-        Collection<CalendarEvent> calendarEvents = getCalendarEvents(server, userId, password, email, startDate, endDate);
+        Collection<CalendarEvent> calendarEvents = getCalendarEvents(email, startDate, endDate);
         for (CalendarEvent a : calendarEvents) {
             System.out.println("Start: " + a.getStartTime());
             System.out.println("End: " + a.getEndTime());
@@ -43,8 +57,8 @@ public class ExchangeClient {
         }
     }
 
-    public void outputAppointments(String server, String userId, String password, String roomAddress) throws Exception {
-        FindItemsResults<Appointment> findResults = getAppointments(server, userId, password, roomAddress);
+    public void outputAppointments(String targetAddress) throws Exception {
+        FindItemsResults<Appointment> findResults = getAppointments(targetAddress);
         for (Appointment a : findResults.getItems()) {
             System.out.println("Start: " + a.getStart());
             System.out.println("End: " + a.getEnd());
@@ -53,7 +67,7 @@ public class ExchangeClient {
         }
     }
 
-    public FindItemsResults<Appointment> getAppointments(String server, String userId, String password, String roomAddress) throws Exception {
+    public FindItemsResults<Appointment> getAppointments(String targetAddress) throws Exception {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.HOUR_OF_DAY, 0);
         cal.set(Calendar.MINUTE, 0);
@@ -67,21 +81,21 @@ public class ExchangeClient {
         Date startDate = new Date(now - dayInMillis);
         Date endDate = new Date(now + dayInMillis);
         */
-        return getAppointments(server, userId, password, roomAddress, startDate, endDate);
+        return getAppointments(targetAddress, startDate, endDate);
     }
 
-    public FindItemsResults<Appointment> getAppointments(String server, String userId, String password, String roomAddress, Date startDate, Date endDate) throws Exception {
-        ExchangeService exchangeService = createExchangeService(server, userId, password);
+    public FindItemsResults<Appointment> getAppointments(String targetAddress, Date startDate, Date endDate) throws Exception {
+        ExchangeService exchangeService = createExchangeService();
 
         // http://blog.liris.org/2011/01/ms-exchange.html
-        Mailbox room = new Mailbox(roomAddress);
-        FolderId fid = new FolderId(WellKnownFolderName.Calendar, room);
+        Mailbox target = new Mailbox(targetAddress);
+        FolderId fid = new FolderId(WellKnownFolderName.Calendar, target);
         CalendarFolder cf = CalendarFolder.bind(exchangeService, fid);
         FindItemsResults<Appointment> findResults = cf.findAppointments(new CalendarView(startDate, endDate));
         return findResults;
     }
 
-    ExchangeService createExchangeService(String server, String userId, String password) throws Exception {
+    ExchangeService createExchangeService() throws Exception {
         String serverUrl = "https://" + server + "/EWS/Exchange.asmx";
         ExchangeCredentials credentials = new WebCredentials(userId, password);
         ExchangeVersion exchangeVersion = ExchangeVersion.Exchange2010_SP2;
@@ -92,9 +106,9 @@ public class ExchangeClient {
         return exchangeService;
     }
 
-    public Collection<CalendarEvent> getCalendarEvents(String server, String userId, String password, String email, Date startDate, Date endDate) throws Exception {
+    public Collection<CalendarEvent> getCalendarEvents(String email, Date startDate, Date endDate) throws Exception {
         try {
-            ExchangeService service = createExchangeService(server, userId, password);
+            ExchangeService service = createExchangeService();
             List<AttendeeInfo> attendees = new ArrayList<AttendeeInfo>();
             attendees.add(new AttendeeInfo(email));
 
