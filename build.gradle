@@ -30,6 +30,7 @@ repositories {
 }
 
 dependencies {
+    // ews-java-api-XXX.jar in ./lib/
     compile fileTree(dir: './lib', includes: ['*.jar'])
     compile 'commons-httpclient:commons-httpclient:3.1'
     compile 'commons-logging:commons-logging:1.2'

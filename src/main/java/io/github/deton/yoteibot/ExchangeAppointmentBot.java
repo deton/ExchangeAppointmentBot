@@ -41,11 +41,27 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
 
     @Override
     public void onMessage(MessageEvent event) throws Exception {
+        String respmsg = handleMessage(event);
+        if (respmsg != null && respmsg.length() > 0) {
+            //event.respond(respmsg); // PRIVMSG
+            event.getChannel().send().notice(respmsg);
+        }
+    }
+
+    @Override
+    public void onPrivateMessage(PrivateMessageEvent event) throws Exception {
+        String respmsg = handleMessage(event);
+        if (respmsg != null && respmsg.length() > 0) {
+            event.getUser().send().notice(respmsg);
+        }
+    }
+
+    String handleMessage(GenericMessageEvent event) throws Exception {
         String nick = event.getUser().getNick();
         String msg = event.getMessage();
         String respmsg = null;
         if (logger.isLoggable(Level.FINE)) {
-            logger.log(Level.FINE, "onMessage: " + msg);
+            logger.log(Level.FINE, "handleMessage: " + msg);
         }
         try {
             if (isBotNick(nick)) {
@@ -56,18 +72,15 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
                 // TODO: "予定"や"よてい"等にも反応する
                 respmsg = handleYoteiMessage(nick, removeNoiseChars(msg));
             } else {
-                return;
+                return null;
             }
         } catch (Exception ex) {
             if (logger.isLoggable(Level.INFO)) {
-                logger.log(Level.INFO, "onMessage", ex);
+                logger.log(Level.INFO, "handleMessage", ex);
             }
             respmsg = ex.getMessage();
         }
-        if (respmsg != null && respmsg.length() > 0) {
-            //event.respond(respmsg); // PRIVMSG
-            event.getChannel().send().notice(respmsg);
-        }
+        return respmsg;
     }
 
     public static void main(String[] args) throws Exception {
@@ -158,11 +171,12 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
                 date = params[2];
             }
         }
+        // XXX: 発言者nickは大文字小文字無視したい。当面はnick->email登録で対処
         return getAppointment(getEmailAddressFromNick(nick), date);
     }
 
     boolean isDateParam(String param) {
-        return (param.equals("asu") || param.equals("kyo") || param.matches("^[0-9].*"));
+        return (param.equals("asu") || param.equals("kyo") || param.matches("^[0-9]+$"));
     }
 
     /**
@@ -222,13 +236,10 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
-        if (calendarEvents == null) {
-            return String.format("予定無し(%s)", email);
-        }
         // 終了予定後、2時間経過している予定は無視。
         // 終わらず続いている場合は知りたい。
         String respmsg = respformatter.format(calendarEvents, now - 2 * 60 * 60 * 1000);
-        if (respmsg.length() == 0) { // calendarEvents内予定が全て無視された
+        if (respmsg == null || respmsg.length() == 0) {
             return String.format("予定無し(%s)", email);
         }
         return respmsg;
@@ -251,6 +262,8 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
             Scanner s = null;
             try {
                 s = new Scanner(date);
+                // yyyymmdd, yyyy-mm-dd, yyyy/mm/dd
+                // XXX: 19→1月9日とみなされる
                 s.findInLine("(?:(\\d{4}))?\\D*(\\d{1,2})\\D*(\\d{1,2})");
                 MatchResult result = s.match();
                 String y = result.group(1);
@@ -262,7 +275,9 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
                     cal.add(Calendar.YEAR, 1);
                 }
                 int day = Integer.parseInt(result.group(3));
-                logger.log(Level.INFO, "YMD:" + cal.get(Calendar.YEAR) + "-" + month + "-" + day);
+                if (logger.isLoggable(Level.FINE)) {
+                    logger.log(Level.FINE, "YMD:" + cal.get(Calendar.YEAR) + "-" + month + "-" + day);
+                }
                 cal.set(Calendar.MONTH, month - 1);
                 cal.set(Calendar.DATE, day);
             } catch (IllegalStateException ex) {
@@ -282,10 +297,11 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         } catch (Exception ex) {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
-        if (calendarEvents == null) {
+        String respmsg = respformatter.format(calendarEvents, 0);
+        if (respmsg == null || respmsg.length() == 0) {
             return String.format("予定無し(%tF, %s)", startDate, email);
         }
-        return respformatter.format(calendarEvents, 0);
+        return respmsg;
     }
 
     Properties loadConfigurationFile(String filename) throws IOException {

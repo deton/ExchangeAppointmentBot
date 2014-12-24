@@ -16,6 +16,9 @@ public class ResponseMessageFormatter {
      * @param fromMillis 終了日時がこの日時より前の予定は除く
      */
     public String format(Collection<CalendarEvent> calendarEvents, long fromMillis) {
+        if (calendarEvents == null) {
+            return null;
+        }
         long now = System.currentTimeMillis();
         StringBuilder sb = new StringBuilder();
         Formatter fmt = new Formatter(sb);
