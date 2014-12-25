@@ -20,6 +20,8 @@ public class ExchangeClient {
             return;
         }
         ExchangeClient ec = new ExchangeClient(args[0], args[1], args[2]);
+        // XXX: findAppointments() throws Exception on getting appointments
+        // of other user.
         //ec.outputAppointments(args[3]);
         ec.outputCalendarEvents(args[3]);
     }

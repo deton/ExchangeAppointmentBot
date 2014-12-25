@@ -22,6 +22,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     Properties botnick2usernick;
     Properties nick2email;
     Properties locationProp;
+    Properties ignoreProp;
 
     public ExchangeAppointmentBot(String path) throws IllegalArgumentException, IOException {
         if (path != null) {
@@ -36,7 +37,8 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
         nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
         locationProp = loadConfigurationFile("location.xml");
-        respformatter = new ResponseMessageFormatter(locationProp);
+        ignoreProp = loadConfigurationFile("ignore.xml");
+        respformatter = new ResponseMessageFormatter(locationProp, ignoreProp);
     }
 
     @Override
@@ -307,6 +309,8 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     Properties loadConfigurationFile(String filename) throws IOException {
         Properties p = new Properties();
         try (FileInputStream in = new FileInputStream(new File(datadir, filename))) {
+            // 場所文字列の短縮用正規表現ではkeyにスペースを含めたいので、
+            // propertiesファイルでなくXMLファイル
             p.loadFromXML(in);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {

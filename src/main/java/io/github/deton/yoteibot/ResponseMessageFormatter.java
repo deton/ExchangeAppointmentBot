@@ -6,8 +6,11 @@ import microsoft.exchange.webservices.data.*;
 
 public class ResponseMessageFormatter {
     Properties prop;
-    public ResponseMessageFormatter(Properties prop) {
+    Properties ignoreProp;
+
+    public ResponseMessageFormatter(Properties prop, Properties ignoreProp) {
         this.prop = prop;
+        this.ignoreProp = ignoreProp;
     }
 
     /**
@@ -24,7 +27,9 @@ public class ResponseMessageFormatter {
         Formatter fmt = new Formatter(sb);
         Calendar cal = Calendar.getInstance();
         int today = cal.get(Calendar.DATE);
+        int todayMonth = cal.get(Calendar.MONTH);
         int prevDate = today;
+        int prevMonth = todayMonth;
         String headmark = "▼";
         for (CalendarEvent a : calendarEvents) {
             Date start = a.getStartTime();
@@ -32,20 +37,40 @@ public class ResponseMessageFormatter {
             if (end.getTime() < fromMillis) {
                 continue;
             }
+            String subj = null;
+            String loc = null;
+            CalendarEventDetails details = a.getDetails();
+            if (details != null) {
+                subj = details.getSubject();
+                loc = details.getLocation();
+            }
+            if (subj == null) {
+                subj = "-";
+            }
+            if (isIgnore(subj)) {
+                continue;
+            }
+
             cal.setTime(start);
             int date = cal.get(Calendar.DATE);
-            if (date != prevDate) {
-                if (date == today) {
+            int month = cal.get(Calendar.MONTH);
+            if (date != prevDate || month != prevMonth) {
+                if (date == today && month == todayMonth) {
                     // 日全体の予定があって翌日終了のため●になったのを戻す
                     headmark = "▼";
                 } else {
                     headmark = "●";
                 }
-                fmt.format("%s%td日", headmark, start);
-                prevDate = date;
+                if (month != prevMonth) {
+                    fmt.format("%s%2$tm月%2$td日", headmark, start);
+                } else {
+                    fmt.format("%s%td日", headmark, start);
+                }
             } else {
                 sb.append(headmark);
             }
+            prevDate = date;
+            prevMonth = month;
 
             boolean needResetColor = false;
             switch (a.getFreeBusyStatus()) {
@@ -64,29 +89,23 @@ public class ResponseMessageFormatter {
 
             fmt.format("%tR", start);
             sb.append("-");
+
+            // end
             cal.setTime(end);
             date = cal.get(Calendar.DATE);
+            month = cal.get(Calendar.MONTH);
             if (date != prevDate) {
                 fmt.format("%td日", end);
-                if (date == today) {
+                if (date == today && month == todayMonth) {
                     headmark = "▼";
                 } else {
                     headmark = "●";
                 }
-                prevDate = date;
             }
+            prevDate = date;
+            prevMonth = month;
             fmt.format("%tR", end);
 
-            String subj = null;
-            String loc = null;
-            CalendarEventDetails details = a.getDetails();
-            if (details != null) {
-                subj = details.getSubject();
-                loc = details.getLocation();
-            }
-            if (subj == null) {
-                subj = "-";
-            }
             sb.append(" ");
             sb.append(subj);
             if (loc != null) {
@@ -99,6 +118,15 @@ public class ResponseMessageFormatter {
         return sb.toString();
     }
 
+    boolean isIgnore(String subject) {
+        for (String key : ignoreProp.stringPropertyNames()) {
+            if (subject.matches(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 会議室名を短くする。
      * 例: "本社)川崎共通 本1 1階 A101会議室 10人"→"A101"
@@ -106,7 +134,6 @@ public class ResponseMessageFormatter {
     String shortenLocation(String location) {
         StringBuffer sb = new StringBuffer();
         boolean matched = false;
-        // XXX: propertiesファイルの場合、keyにスペースを含められない
         for (String key : prop.stringPropertyNames()) {
             Pattern pat = Pattern.compile(key); // TODO: compileしたものを保持
             Matcher m = pat.matcher(location);
