@@ -127,6 +127,7 @@ public class ExchangeClient {
             if (logger.isLoggable(Level.WARNING)) {
                 logger.log(Level.WARNING, "getCalendarEvents", ex);
             }
+            throw ex;
         }
         return null;
     }

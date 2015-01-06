@@ -213,13 +213,21 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
 
     String setEmailAddressForNick(String nick, String email) {
         nick2email.setProperty(nick, email);
-        saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
+        try {
+            saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
+        } catch (IOException ex) {
+            return "Failed to save configuration file(" + NICK2EMAIL_FILE + "): " + ex.getMessage();
+        }
         return "nick->email設定を登録: " + nick + "->" + email;
     }
 
     String deleteEmailAddressForNick(String nick) {
         nick2email.remove(nick);
-        saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
+        try {
+            saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
+        } catch (IOException ex) {
+            return "Failed to save configuration file(" + NICK2EMAIL_FILE + "): " + ex.getMessage();
+        }
         return "nick->email設定を削除: " + nick;
     }
 
@@ -321,13 +329,14 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         return p;
     }
 
-    void saveConfigurationFile(String filename, Properties p) {
+    void saveConfigurationFile(String filename, Properties p) throws IOException {
         try (FileOutputStream out = new FileOutputStream(new File(datadir, filename))) {
             p.storeToXML(out, "ExchangeAppointmentBot: " + filename);
         } catch (IOException e) {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info("NG storing properties file: " + filename);
              }
+             throw e;
         }
     }
 }
