@@ -34,10 +34,28 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
         exchange = new ExchangeClient(p.getProperty("server"),
                 p.getProperty("userId"), p.getProperty("password"));
 
-        botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
-        nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
-        locationProp = loadConfigurationFile("location.xml");
-        ignoreProp = loadConfigurationFile("ignore.xml");
+        // load optional configuration files
+        try {
+            botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
+        } catch (IOException ex) {
+            botnick2usernick = new Properties();
+        }
+        try {
+            nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
+        } catch (IOException ex) {
+            nick2email = new Properties();
+        }
+        try {
+            locationProp = loadConfigurationFile("location.xml");
+        } catch (IOException ex) {
+            locationProp = new Properties();
+        }
+        try {
+            ignoreProp = loadConfigurationFile("ignore.xml");
+        } catch (IOException ex) {
+            ignoreProp = new Properties();
+        }
+
         respformatter = new ResponseMessageFormatter(locationProp, ignoreProp);
     }
 
@@ -213,22 +231,24 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
 
     String setEmailAddressForNick(String nick, String email) {
         nick2email.setProperty(nick, email);
+        String msg = "nick->email設定を登録: " + nick + "->" + email;
         try {
             saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
         } catch (IOException ex) {
-            return "Failed to save configuration file(" + NICK2EMAIL_FILE + "): " + ex.getMessage();
+            return msg + "。設定ファイル(" + NICK2EMAIL_FILE + ")保存エラー: " + ex.getMessage();
         }
-        return "nick->email設定を登録: " + nick + "->" + email;
+        return msg;
     }
 
     String deleteEmailAddressForNick(String nick) {
         nick2email.remove(nick);
+        String msg = "nick->email設定を削除: " + nick;
         try {
             saveConfigurationFile(NICK2EMAIL_FILE, nick2email);
         } catch (IOException ex) {
-            return "Failed to save configuration file(" + NICK2EMAIL_FILE + "): " + ex.getMessage();
+            return msg + "。設定ファイル(" + NICK2EMAIL_FILE + ")保存エラー: " + ex.getMessage();
         }
-        return "nick->email設定を削除: " + nick;
+        return msg;
     }
 
     String getAppointment(String email) throws ServiceLocalException {
