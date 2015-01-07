@@ -38,3 +38,7 @@ dependencies {
 
     compile 'org.pircbotx:pircbotx:2.0.1'
 }
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.1'
+}
