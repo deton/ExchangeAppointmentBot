@@ -47,7 +47,7 @@ public class ResponseMessageFormatter {
             if (subj == null) {
                 subj = "-";
             }
-            if (isIgnore(subj)) {
+            if (a.getFreeBusyStatus() == LegacyFreeBusyStatus.Free || isIgnore(subj)) {
                 continue;
             }
 
