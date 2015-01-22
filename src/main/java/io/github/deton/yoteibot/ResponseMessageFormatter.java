@@ -137,10 +137,12 @@ public class ResponseMessageFormatter {
         for (String key : prop.stringPropertyNames()) {
             Pattern pat = Pattern.compile(key); // TODO: compileしたものを保持
             Matcher m = pat.matcher(location);
-            if (m.find()) {
+            while (m.find()) {
                 m.appendReplacement(sb, prop.getProperty(key));
-                m.appendTail(sb);
                 matched = true;
+            }
+            if (matched) {
+                m.appendTail(sb);
                 break;
             }
         }
