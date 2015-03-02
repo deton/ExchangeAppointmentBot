@@ -133,22 +133,17 @@ public class ResponseMessageFormatter {
      */
     String shortenLocation(String location) {
         StringBuffer sb = new StringBuffer();
-        boolean matched = false;
+        String str = location;
         for (String key : prop.stringPropertyNames()) {
             Pattern pat = Pattern.compile(key); // TODO: compileしたものを保持
-            Matcher m = pat.matcher(location);
+            Matcher m = pat.matcher(str);
             while (m.find()) {
                 m.appendReplacement(sb, prop.getProperty(key));
-                matched = true;
             }
-            if (matched) {
-                m.appendTail(sb);
-                break;
-            }
+            m.appendTail(sb);
+            str = sb.toString();
+            sb.setLength(0);
         }
-        if (matched) {
-            return sb.toString();
-        }
-        return location;
+        return str;
     }
 }
