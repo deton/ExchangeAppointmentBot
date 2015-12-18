@@ -12,7 +12,8 @@ yamadaさんの予定を返してくれるボットです
 Outlookを起動してその人の予定を開く操作をして
 表示されるのを待つ(数十秒待たされる場合あり)よりも早いと思います。
 
-さらに、[PHS着信電波を検出してIRCに通知するボット](https://github.com/deton/phsringnotify)
+さらに、[Lyncで電話がかかってきた時にIRC通知](https://github.com/deton/LyncRingNotify)や、
+[PHS着信電波を検出してIRCに通知するボット](https://github.com/deton/phsringnotify)
 がチャンネルに発言する着信通知メッセージを受けて、
 該当する人の予定を発言します。
 

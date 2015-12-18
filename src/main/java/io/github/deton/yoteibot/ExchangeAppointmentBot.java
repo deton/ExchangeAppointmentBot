@@ -267,7 +267,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
         if (calendarEvents == null) {
-            return String.format("Exchangeからの予定取得失敗(%s)", email);
+            return String.format("Exchangeからの予定取得失敗。時間を置いて再度試してみてください。(%s)", email);
         }
         // 終了予定後、2時間経過している予定は無視。
         // 終わらず続いている場合は知りたい。
@@ -331,7 +331,7 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
             return "Failed to get appointments from Exchange: " + ex.getMessage();
         }
         if (calendarEvents == null) {
-            return String.format("Exchangeからの予定取得失敗(%tF, %s)", startDate, email);
+            return String.format("Exchangeからの予定取得失敗。時間を置いて再度試してみてください。(%tF, %s)", startDate, email);
         }
         String respmsg = respformatter.format(calendarEvents, 0);
         if (respmsg == null || respmsg.length() == 0) {
