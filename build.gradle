@@ -13,10 +13,9 @@ allprojects {
 */
 
 mainClassName = 'io.github.deton.yoteibot.ExchangeAppointmentBot'
-//mainClassName = 'ExchangeClient'
 
 run {
-    // Usage: gradle run -Pargs="irc.example.com [yotei] #projA /home/deton/.yoteibot/"
+    // Usage: gradle run -Pargs="/home/deton/.yoteibot/"
     // cf. http://qiita.com/opengl-8080/items/4c1aa85b4737bd362d9e
     // "args" というプロパティが渡されていたら
     if (project.hasProperty('args')) {
@@ -30,15 +29,6 @@ repositories {
 }
 
 dependencies {
-    // ews-java-api-XXX.jar in ./lib/
-    compile fileTree(dir: './lib', includes: ['*.jar'])
-    compile 'commons-httpclient:commons-httpclient:3.1'
-    compile 'commons-logging:commons-logging:1.2'
-    compile 'jcifs:jcifs:1.3.17'
-
-    compile 'org.pircbotx:pircbotx:2.0.1'
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.1'
+    compile 'com.microsoft.ews-java-api:ews-java-api:2.0'
+    compile 'com.ullink.slack:simpleslackapi:1.2.0'
 }
