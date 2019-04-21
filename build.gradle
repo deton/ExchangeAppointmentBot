@@ -17,9 +17,9 @@ mainClassName = 'io.github.deton.yoteibot.ExchangeAppointmentBot'
 run {
     // Usage: gradle run -Pargs="/home/deton/.yoteibot/"
     // cf. http://qiita.com/opengl-8080/items/4c1aa85b4737bd362d9e
-    // "args" ¤È¤¤¤¦¥×¥í¥Ñ¥Æ¥£¤¬ÅÏ¤µ¤ì¤Æ¤¤¤¿¤é
+    // "args" ã¨ã„ã†ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ãŒæ¸¡ã•ã‚Œã¦ã„ãŸã‚‰
     if (project.hasProperty('args')) {
-        // ¶õÇòÊ¸»ú¤Ç split ¤·¤Æ¡¢ run ¥¿¥¹¥¯¤Î args ¥ª¥×¥·¥ç¥ó¤Ë¥»¥Ã¥È¤¹¤ë
+        // ç©ºç™½æ–‡å­—ã§ split ã—ã¦ã€ run ã‚¿ã‚¹ã‚¯ã® args ã‚ªãƒ—ã‚·ãƒ§ãƒ³ã«ã‚»ãƒƒãƒˆã™ã‚‹
         args project.args.split('\\s+')
     }
 }

@@ -1,31 +1,20 @@
-# yoteibot: Microsoft Exchange Serverから予定を取得してIRCに通知するボット
+# yoteibot: Microsoft Exchange Serverから予定を取得してSlackに通知するボット
 
-このボットのいるIRCチャンネルで`yotei yamada`と発言すると、
+([IRC版](../irc/))
+
+このボットのいるSlackチャンネルで`yotei yamada`と発言すると、
 yamadaさんの予定を返してくれるボットです
 (会議室のemailアドレスを登録しておけば、会議室の予定の参照も可能です)。
 
 ```
 >deton< yotei yamada
-<[yotei]> ▼10:00-11:00 運用管理打合せ(谷川Gr)(N210)●26日10:30-12:00 特許検討会
+<yoteibot>
+  ▼10:00-11:00 運用管理打合せ(谷川Gr)(N210)
+  ●26日10:30-12:00 特許検討会
 ```
 
 Outlookを起動してその人の予定を開く操作をして
 表示されるのを待つ(数十秒待たされる場合あり)よりも早いと思います。
-
-さらに、[Lyncで電話がかかってきた時にIRC通知](https://github.com/deton/LyncRingNotify)や、
-[PHS着信電波を検出してIRCに通知するボット](https://github.com/deton/phsringnotify)
-がチャンネルに発言する着信通知メッセージを受けて、
-該当する人の予定を発言します。
-
-```
-<[PHSdeto]> @deton RING (0.52)
-<[yotei]> ▼10:00-11:00 運用管理打合せ(谷川Gr)(N210)●26日09:00-10:30 グループ打合せ(S505)●09:30-11:00 Lync会議(S505)●10:30-12:00 特許検討会
-```
-
-会社の事務所で、近くの人の構内PHSが鳴っているが、その人が離席中の場合に、
-かわりに電話をとった時、席をはずしている理由を知りたいので作りました
-(休み/出張/会議、会議がいつ終わるのか、出張からいつ帰ってくるのか、
-明日はいるのか、などを聞かれた場合、予定表を参照する必要があるので)。
 
 ## yotei
 予定を参照するコマンドです。
@@ -58,10 +47,9 @@ yoteiconfやyoteiコマンドでは、
 ニックネームやemail中に含まれる`,`,`:`,`;`,`/`の文字は無視するようにしています。
 つまり、yoteibotは、`yotei ya,mada`という発言を、`yotei yamada`とみなします。
 
-山田さんがIRCクライアントで`yamada`をキーワードに設定している場合、
+山田さんが`yamada`を通知キーワードに設定している場合、
 他の人が`yotei yamada`と発言すると、
-山田さんのIRCクライアントは呼び出されたとみなして、山田さんに通知するので、
-それを回避するための機能です。
+山田さんへの呼び出し通知が発生するので、それを回避するための機能です。
 
 ## 予定表示形式
 各予定は以下の形式で表示します。
@@ -73,7 +61,7 @@ yoteiconfやyoteiコマンドでは、
  * ●: 今日以外の予定
 * 予定状態。状態が「空き時間」の予定は表示しません。
  * ?: 仮の予定
- * 紫色: 外出中
+ * bold: 外出中
  * デフォルト: それ以外
 * 開始時刻。前の予定と日が変わる場合は何日かも表示。月も同様。
 * 終了時刻。開始時刻と日が変わる場合は何日かも表示。
@@ -81,14 +69,18 @@ yoteiconfやyoteiコマンドでは、
 * 予定のlocation。場所が空の場合は()ごと表示しない。
 
 ## 起動時引数
-* IRCサーバホスト名。例: `irc.example.com`
-* botのニックネーム。例: `[yotei]`
-* JOINするチャンネル。例: `#projA`
 * 設定ファイルのディレクトリ(オプション。デフォルトは`$HOME/.yoteibot/`)
+
+## 環境変数
+* `SLACK_BOT_AUTH_TOKEN`: Slack接続用トークン
+
+現状、`localhost:8888`のproxy経由でSlackに接続するコードになっています。
+
+Slack接続は、[simple-slack-api](https://github.com/Ullink/simple-slack-api) 
+を使用しています。
 
 ## 設定ファイル
 * exchange.xml: Exchange Server接続情報。
-* botnick2usernick.xml: PHS着信通知ボットのニックネームから、人のnickへの変換テーブル
 * nick2email.xml: 人のnickから、Exchangeでのemailアドレスへの変換テーブル。
 * location.xml: 場所文字列の短縮を行うためのデータ。キーが正規表現。値は置換後文字列($1等を使用可)
 * ignore.xml: 無視したい予定の正規表現パターン。
@@ -103,17 +95,6 @@ Exchange Serverへの接続情報です。
   <entry key="server">exchange.example.jp</entry>
   <entry key="userId">taro</entry>
   <entry key="password">p@sSw0rd</entry>
-</properties>
-```
-
-### botnick2usernick.xml
-PHS着信通知ボットのニックネームから、人のnickへの変換テーブル。
-
-```
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
-<properties>
-  <entry key="[PHSdeto]">deton</entry>
 </properties>
 ```
 
@@ -158,4 +139,4 @@ PHS着信通知ボットのニックネームから、人のnickへの変換テ�
 ```
 
 ## ライセンス
-使用しているIRCライブラリのPircBotXがGPL v3なので、yoteibotもGPL v3です。
+GPL v3
