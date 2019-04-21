@@ -1,25 +1,35 @@
 package io.github.deton.yoteibot;
 
-import java.io.*;
-import java.net.*;
-import java.nio.charset.Charset;
-import java.util.*;
-import java.util.logging.*;
-import java.util.regex.*;
-import microsoft.exchange.webservices.data.*;
-import org.pircbotx.*;
-import org.pircbotx.hooks.*;
-import org.pircbotx.hooks.events.*;
-import org.pircbotx.hooks.types.*;
+import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackSession;
+import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
+import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
+import com.ullink.slack.simpleslackapi.listeners.SlackMessagePostedListener;
 
-public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.Proxy;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Properties;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.MatchResult;
+
+import microsoft.exchange.webservices.data.core.exception.service.local.ServiceLocalException;
+import microsoft.exchange.webservices.data.property.complex.availability.CalendarEvent;
+
+public class ExchangeAppointmentBot implements SlackMessagePostedListener {
     static final String NICK2EMAIL_FILE = "nick2email.xml";
     static Logger logger = Logger.getLogger("ExchangeAppointmentBot");
     ExchangeClient exchange;
     ResponseMessageFormatter respformatter;
 
     File datadir;
-    Properties botnick2usernick;
     Properties nick2email;
     Properties locationProp;
     Properties ignoreProp;
@@ -35,11 +45,6 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
                 p.getProperty("userId"), p.getProperty("password"));
 
         // load optional configuration files
-        try {
-            botnick2usernick = loadConfigurationFile("botnick2usernick.xml");
-        } catch (IOException ex) {
-            botnick2usernick = new Properties();
-        }
         try {
             nick2email = loadConfigurationFile(NICK2EMAIL_FILE);
         } catch (IOException ex) {
@@ -60,33 +65,30 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     }
 
     @Override
-    public void onMessage(MessageEvent event) throws Exception {
-        String respmsg = handleMessage(event);
+    public void onEvent(SlackMessagePosted event, SlackSession session) {
+        SlackChannel channel = event.getChannel();
+        String respmsg = null;
+        try {
+            respmsg = handleMessage(event);
+        } catch (Exception e) {
+            if (logger.isLoggable(Level.INFO)) {
+                logger.info(e.getMessage());
+            }
+        }
         if (respmsg != null && respmsg.length() > 0) {
-            //event.respond(respmsg); // PRIVMSG
-            event.getChannel().send().notice(respmsg);
+            session.sendMessage(channel, respmsg);
         }
     }
 
-    @Override
-    public void onPrivateMessage(PrivateMessageEvent event) throws Exception {
-        String respmsg = handleMessage(event);
-        if (respmsg != null && respmsg.length() > 0) {
-            event.getUser().send().notice(respmsg);
-        }
-    }
-
-    String handleMessage(GenericMessageEvent event) throws Exception {
-        String nick = event.getUser().getNick();
-        String msg = event.getMessage();
+    String handleMessage(SlackMessagePosted event) throws Exception {
+        String msg = event.getMessageContent();
+        String nick = event.getSender().getUserName();
         String respmsg = null;
         if (logger.isLoggable(Level.FINE)) {
             logger.log(Level.FINE, "handleMessage: " + msg);
         }
         try {
-            if (isBotNick(nick)) {
-                respmsg = getAppointment(getEmailAddressFromNick(getUserNickFromBotNick(nick)));
-            } else if (msg.startsWith("yoteiconf")) {
+            if (msg.startsWith("yoteiconf")) {
                 respmsg = handleYoteiConfMessage(nick, removeNoiseChars(msg));
             } else if (msg.startsWith("yotei")) {
                 // TODO: "予定"や"よてい"等にも反応する
@@ -104,35 +106,17 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 3) {
-            System.out.println("Usage: ExchangeAppointmentBot <ircserver> <nick> <channel> [datadir]");
-            System.out.println("   ex: ExchangeAppointmentBot irc.example.com [yotei] #projA /home/deton/.yoteibot/");
-            return;
-        }
         String datadir = null;
-        if (args.length > 3) {
-            datadir = args[3];
+        if (args.length > 0) {
+            datadir = args[0];
         }
 
-        Configuration<PircBotX> configuration = new Configuration.Builder<PircBotX>()
-            .setServerHostname(args[0])
-            .setName(args[1]) // nick of the bot
-            .addAutoJoinChannel(args[2])
-            .setEncoding(Charset.forName("ISO-2022-JP"))
-            .addListener(new ExchangeAppointmentBot(datadir))
-            .buildConfiguration();
-
-        PircBotX bot = new PircBotX(configuration);
-        bot.startBot();
-    }
-
-    boolean isBotNick(String nick) {
-        // XXX: botのnickは大文字小文字も正しく設定ファイルに書く必要あり
-        String usernick = botnick2usernick.getProperty(nick);
-        if (usernick == null) {
-            return false;
-        }
-        return true;
+        SlackSession session = SlackSessionFactory.getSlackSessionBuilder(
+                System.getenv("SLACK_BOT_AUTH_TOKEN"))
+                .withProxy(Proxy.Type.HTTP, "localhost", 8888)
+                .build();
+        session.connect();
+        session.addMessagePostedListener(new ExchangeAppointmentBot(datadir));
     }
 
     /**
@@ -207,18 +191,6 @@ public class ExchangeAppointmentBot extends ListenerAdapter<PircBotX> {
      */
     String removeNoiseChars(String msg) {
         return msg.replaceAll("[,:;/]", "");
-    }
-
-    /**
-     * PhsRingNotifyデバイスbotのnickから、対応するユーザのnickを得る。
-     * 例: "detonPHS"→"deton"
-     */
-    String getUserNickFromBotNick(String botnick) throws UnknownBotNickException {
-        String usernick = botnick2usernick.getProperty(botnick);
-        if (usernick == null) {
-            throw new UnknownBotNickException("Unknown bot nick: " + botnick + ". Please add the nick to botnick2usernick.properties file.");
-        }
-        return usernick;
     }
 
     String getEmailAddressFromNick(String nick) throws UnknownUserNickException {

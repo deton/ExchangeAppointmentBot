@@ -1,8 +1,16 @@
 package io.github.deton.yoteibot;
 
-import java.util.*;
-import java.util.regex.*;
-import microsoft.exchange.webservices.data.*;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Formatter;
+import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import microsoft.exchange.webservices.data.core.enumeration.property.LegacyFreeBusyStatus;
+import microsoft.exchange.webservices.data.property.complex.availability.CalendarEvent;
+import microsoft.exchange.webservices.data.property.complex.availability.CalendarEventDetails;
 
 public class ResponseMessageFormatter {
     Properties prop;
@@ -72,18 +80,18 @@ public class ResponseMessageFormatter {
             prevDate = date;
             prevMonth = month;
 
-            boolean needResetColor = false;
+            String endStr = null;
             switch (a.getFreeBusyStatus()) {
             case Tentative: // 仮の予定
                 sb.append("?");
                 break;
             case Free: // 空き時間
-                sb.append("\00315"); // light grey
-                needResetColor = true;
+                sb.append("_"); // italic // TODO: escape _
+                endStr = "_";
                 break;
             case OOF: // 外出中
-                sb.append("\00306"); // purple
-                needResetColor = true;
+                sb.append("*"); // bold
+                endStr = "*";
                 break;
             }
 
@@ -111,9 +119,14 @@ public class ResponseMessageFormatter {
             if (loc != null) {
                 fmt.format("(%s)", shortenLocation(loc));
             }
-            if (needResetColor) {
-                sb.append("\003");
+            if (endStr != null) {
+                sb.append(endStr);
             }
+            sb.append("\n");
+        }
+        if (sb.length() > 0) {
+            sb.insert(0, "```\n");
+            sb.append("```\n");
         }
         return sb.toString();
     }
