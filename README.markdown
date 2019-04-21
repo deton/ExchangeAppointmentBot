@@ -1,6 +1,6 @@
 # yoteibot: Microsoft Exchange Serverから予定を取得してSlackに通知するボット
 
-([IRC版](../irc/))
+([IRC版](../../tree/irc/))
 
 このボットのいるSlackチャンネルで`yotei yamada`と発言すると、
 yamadaさんの予定を返してくれるボットです
