@@ -113,6 +113,7 @@ public class ExchangeAppointmentBot implements SlackMessagePostedListener {
 
         SlackSession session = SlackSessionFactory.getSlackSessionBuilder(
                 System.getenv("SLACK_BOT_AUTH_TOKEN"))
+                .withAutoreconnectOnDisconnection(true)
                 .withProxy(Proxy.Type.HTTP, "localhost", 8888)
                 .build();
         session.connect();
