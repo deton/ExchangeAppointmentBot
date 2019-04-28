@@ -31,4 +31,5 @@ repositories {
 dependencies {
     compile 'com.microsoft.ews-java-api:ews-java-api:2.0'
     compile 'com.ullink.slack:simpleslackapi:1.2.0'
+    compile 'org.slf4j:slf4j-jdk14:1.7.7'
 }
